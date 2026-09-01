@@ -1,0 +1,4 @@
+*.log
+pack.sh
+decode_video_app
+__pycache__

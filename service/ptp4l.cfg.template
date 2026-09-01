@@ -1,0 +1,9 @@
+[global]
+unicast_req_duration 10
+
+[unicast_master_table]
+table_id		1
+logQueryInterval	2
+UDPv4    DUT_LAN_IP
+[HOST_LAN]
+unicast_master_table	1

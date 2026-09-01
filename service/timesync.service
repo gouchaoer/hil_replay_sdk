@@ -1,0 +1,10 @@
+[Unit]
+Description=timesync service
+
+[Service]
+User=root
+ExecStart=
+Restart=no
+
+[Install]
+WantedBy=multi-user.target
