@@ -2,6 +2,7 @@
 #define HIL_UTILS_H
 
 #include <boost/interprocess/managed_shared_memory.hpp>
+#include <vulkan/vulkan.h>
 
 #include <algorithm>
 #include <cstdint>
@@ -22,11 +23,84 @@
 #include <cerrno>
 #include <climits>
 #include <condition_variable>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <memory>
 #include <set>
+
+struct HdmiIpc
+{
+    static constexpr uint32_t PROTOCOL_MAGIC = 0x48444d49U;
+    static constexpr uint32_t PROTOCOL_VERSION = 2U;
+    static constexpr uint32_t PIXEL_FORMAT_BGRA8 = 44U;
+
+    struct ImageInfo
+    {
+        uint32_t magic;
+        uint32_t version;
+        uint32_t width;
+        uint32_t height;
+        uint32_t format;
+        uint32_t memory_type_index;
+        uint64_t allocation_size;
+    };
+
+    struct SharedControl
+    {
+        uint32_t magic;
+        uint32_t version;
+        uint64_t produced_sequence;
+        uint64_t consumed_sequence;
+        uint64_t dropped_frames;
+    };
+
+    static std::string normalize_bus_id(std::string bus_id)
+    {
+        if (bus_id.compare(0, 5, "0000:") == 0)
+        {
+            bus_id.erase(0, 5);
+        }
+        const size_t colon = bus_id.find(':');
+        if (colon != std::string::npos)
+        {
+            bus_id.erase(colon);
+        }
+        return bus_id;
+    }
+
+    static std::string socket_path(const std::string& bus_id, uint32_t display_index)
+    {
+        char path[108];
+        std::snprintf(path, sizeof(path), "/tmp/hil_hdmi_%s_%u.sock",
+                      normalize_bus_id(bus_id).c_str(), display_index);
+        return path;
+    }
+
+    static std::string shared_memory_name(const std::string& bus_id, uint32_t display_index)
+    {
+        char name[64];
+        std::snprintf(name, sizeof(name), "/hdmi_%s_%u",
+                      normalize_bus_id(bus_id).c_str(), display_index);
+        return name;
+    }
+
+    static uint64_t load_acquire(const uint64_t* value)
+    {
+        return __atomic_load_n(value, __ATOMIC_ACQUIRE);
+    }
+
+    static void store_release(uint64_t* value, uint64_t next)
+    {
+        __atomic_store_n(value, next, __ATOMIC_RELEASE);
+    }
+
+    static void increment_relaxed(uint64_t* value)
+    {
+        __atomic_add_fetch(value, 1U, __ATOMIC_RELAXED);
+    }
+};
 
 
 inline int64_t get_now_mono_us(){
@@ -36,9 +110,18 @@ inline int64_t get_now_mono_us(){
 }
 
 
-class FrameCostP999Predictor
+class VIDEO_MISS_1000_Predictor
 {
 public:
+    explicit VIDEO_MISS_1000_Predictor(double quantile)
+        : quantile_(quantile)
+    {
+        if (!(quantile_ > 0.0 && quantile_ <= 1.0))
+        {
+            throw std::invalid_argument("quantile must be in (0, 1]");
+        }
+    }
+
     struct Estimate
     {
         int64_t raw_p999_us;
@@ -115,7 +198,8 @@ public:
             std::vector<int64_t> sorted_costs(history_.begin(), history_.end());
             const size_t predictive_rank = std::min(
                 sorted_costs.size(),
-                (999 * (sorted_costs.size() + 1) + 999) / 1000);
+                static_cast<size_t>(std::ceil(
+                    quantile_ * static_cast<double>(sorted_costs.size() + 1))));
             std::nth_element(sorted_costs.begin(), sorted_costs.begin() + predictive_rank - 1,
                              sorted_costs.end());
             predicted_p999_us_.store(sorted_costs[predictive_rank - 1]);
@@ -125,8 +209,9 @@ public:
 
 private:
     static constexpr size_t HISTORY_SIZE = 1000;
-    static constexpr size_t MIN_SAMPLES = 150;
+    static constexpr size_t MIN_SAMPLES = 100;
 
+    const double quantile_;
     mutable std::mutex mutex_;
     std::deque<int64_t> history_;
     std::atomic<int64_t> predicted_p999_us_{0};
@@ -174,10 +259,10 @@ inline bool is_send_skip()
 
 
 
-inline std::string get_monitor_header(int xdma_idx, int video_idx, int okay_warn_error)
+inline std::string get_video_monitor_header(int xdma_idx, int video_idx, int okay_warn_error)
 {
     if(xdma_idx < 0 || xdma_idx > 1 || video_idx < 0 || video_idx > 11 || okay_warn_error < 0 || okay_warn_error > 2){
-        printf("get_monitor_header invalid arg, xdma_idx:%d, video_idx:%d, okay_warn_error:%d\n", xdma_idx, video_idx, okay_warn_error);
+        printf("get_video_monitor_header invalid arg, xdma_idx:%d, video_idx:%d, okay_warn_error:%d\n", xdma_idx, video_idx, okay_warn_error);
         std::exit(1);
     }
     static std::string MONITOR_HEADERS[2][12][3];
@@ -200,6 +285,19 @@ inline std::string get_monitor_header(int xdma_idx, int video_idx, int okay_warn
 
 
 
+
+
+inline std::string get_hdmi_monitor_header(const std::string& bus_id, uint32_t display_index, int okay_warn_error)
+{
+    if(okay_warn_error < 0 || okay_warn_error > 2){
+        printf("get_hdmi_monitor_header invalid arg, bus_id:%s, display_index:%u, okay_warn_error:%d\n",
+               bus_id.c_str(), display_index, okay_warn_error);
+        std::exit(1);
+    }
+    static const char* MONITOR_STATUSES[] = {"OKAY", "WARN", "ERROR"};
+    return std::string("[hdmi_") + HdmiIpc::normalize_bus_id(bus_id) + "_" +
+           std::to_string(display_index) + "|" + MONITOR_STATUSES[okay_warn_error] + "]";
+}
 
 
 class FpsCounter

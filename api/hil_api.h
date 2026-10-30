@@ -14,11 +14,14 @@ int64_t clockdiff_get();
 void clockdiff_set(int64_t diff_us);
 int64_t hil_ts_get();
 char* get_ts_str(); //[CLOCK_MONOTONIC][CLOCK_REALTIME][HIL_TS]
-void my_log(const char *format, ...);
 #ifdef __cplusplus
 }
 
 #include "hil_utils.h"
+
+void my_log(const char *format, ...);
+void hdmi_copy_image(VkInstance instance, VkPhysicalDevice physicDevice,
+    VkDevice device, VkImage image, VkExtent2D imageExtent, VkImageLayout imageLayout);
 
 class HIL_APP
 {
@@ -35,6 +38,7 @@ public:
     int VIDEO_FSYNC_POL;
     int VIDEO_FSYNC_IDX;
     int VIDEO_PERIOD;
+    int VIDEO_MISS_1000;
     int VIDEO_BUF_SIZE;
     int VIDEO_TS_SUBTRACT;
     char VIDEO_PATH[PATH_MAX];
@@ -116,6 +120,7 @@ public:
         VIDEO_FSYNC_IDX = parse_env_int("VIDEO_FSYNC_IDX", true, 0, 11);
         REPLAY_AHEAD = parse_env_int("REPLAY_AHEAD", REPLAY_OR_SIM == 0, 0);
         VIDEO_PERIOD = parse_env_int("VIDEO_PERIOD", true, 1);
+        VIDEO_MISS_1000 = parse_env_int("VIDEO_MISS_1000", REPLAY_OR_SIM == 1, 1, 100);
 
         const char* video_size_h_env = parse_env_str("VIDEO_SIZE_H");
         if (std::sscanf(video_size_h_env, "%d+%d+%d", &VIDEO_SIZE_H_PREPEND,
@@ -159,6 +164,7 @@ public:
             std::cout << "VIDEO_FSYNC_POL: " << VIDEO_FSYNC_POL << std::endl;
             std::cout << "VIDEO_FSYNC_IDX: " << VIDEO_FSYNC_IDX << std::endl;
             std::cout << "VIDEO_PERIOD: " << VIDEO_PERIOD << std::endl;
+            std::cout << "VIDEO_MISS_1000: " << VIDEO_MISS_1000 << std::endl;
             std::cout << "VIDEO_SIZE_H_PREPEND: " << VIDEO_SIZE_H_PREPEND
                       << ", VIDEO_SIZE_H_MAIN: " << VIDEO_SIZE_H_MAIN
                       << ", VIDEO_SIZE_H_APPEND: " << VIDEO_SIZE_H_APPEND << std::endl;

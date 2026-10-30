@@ -20,28 +20,13 @@ fi
 
 ### install libs and tools ### 
 cp  -n /etc/apt/sources.list /etc/apt/sources.list.bak
-cat > /etc/apt/sources.list <<EOF
-deb https://mirrors.aliyun.com/ubuntu/ jammy main restricted universe multiverse
-deb https://mirrors.aliyun.com/ubuntu/ jammy-security main restricted universe multiverse
-deb https://mirrors.aliyun.com/ubuntu/ jammy-updates main restricted universe multiverse
-deb https://mirrors.aliyun.com/ubuntu/ jammy-proposed main restricted universe multiverse
-deb https://mirrors.aliyun.com/ubuntu/ jammy-backports main restricted universe multiverse
-deb-src https://mirrors.aliyun.com/ubuntu/ jammy main restricted universe multiverse
-deb-src https://mirrors.aliyun.com/ubuntu/ jammy-security main restricted universe multiverse
-deb-src https://mirrors.aliyun.com/ubuntu/ jammy-updates main restricted universe multiverse
-deb-src https://mirrors.aliyun.com/ubuntu/ jammy-proposed main restricted universe multiverse
-deb-src https://mirrors.aliyun.com/ubuntu/ jammy-backports main restricted universe multiverse
-EOF
 
 apt update -y
 #apt upgrade -y
 
-
-
-
 apt install -y vlan can-utils sshpass wget git python3-pip python3-opencv vim numactl htop net-tools \
         linuxptp jq iftop ethtool build-essential ffmpeg mpv iputils-clockdiff python3-tk git libpopt-dev \
-        libboost-all-dev nvtop cutecom chrony lm-sensors
+        libboost-all-dev nvtop cutecom chrony lm-sensors npm ca-certificates curl gnupg
 
 # https://carla.readthedocs.io/en/0.9.16/build_linux/
 apt install -y build-essential g++-12 cmake ninja-build libvulkan1 python3 python3-dev python3-pip python3-venv \
@@ -61,6 +46,10 @@ python3 -m pip install --upgrade pip
 python3 -m pip install bitstruct diskcache textparser GitPython cantools python-can
 # carla PythonAPI requirements.txt
 python3 -m pip install numpy matplotlib rich opencv-python loguru future networkx Shapely pygame matplotlib open3d Pillow
+
+
+# install nodejs
+which nodejs || (curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && apt-get install -y nodejs)
 
 
 

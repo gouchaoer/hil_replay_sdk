@@ -18,8 +18,7 @@ ps aux | grep 'video_service.sh' |  grep -v 'bash -c' | grep -v grep | wc -l | g
 
 function clean(){
     pkill -9 -f video_service_app
-    pkill -9 -f decode_video_app
-    rm -rf /dev/shm/xdma_*
+    rm -rf /dev/shm/xdma*
 }
 clean
 trap clean EXIT
