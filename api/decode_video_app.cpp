@@ -12,7 +12,7 @@ public:
         namespace bp = boost::process;
         static bp::ipstream pipe_stream;
         static bp::child c(ffmpeg_cmd, bp::std_out > pipe_stream);
-        int ffmpeg_cmd_fd = pipe_stream.pipe().native_sink();
+        int ffmpeg_cmd_fd = pipe_stream.pipe().native_source();
         return ffmpeg_cmd_fd;
     }
 
@@ -129,7 +129,11 @@ public:
         char* buff_main = buff_next + VIDEO_SIZE_H_PREPEND * row_size;
 
         read_template_image(buff_next, "isx031_1920x1537.raw");
+        //TODO: change embed-line info in buff_next
+
         read_exact(fd, buff_main, VIDEO_SIZE_H_MAIN * row_size);
+
+
     }
 
     void get_replay_image_ovx3c(char* buff_next)
@@ -151,6 +155,8 @@ public:
         }
 
         read_template_image(buff_next, "ovx3c_1920x1282.pad.raw");
+        //TODO: change embed-line info in buff_next
+
         read_exact(fd, buff_decode, decoded_size);
         nv12_to_bayer12(buff_decode, buff_main, VIDEO_SIZE_H_MAIN, VIDEO_SIZE_W, "BGGR");
 
@@ -175,6 +181,8 @@ public:
         }
 
         read_template_image(buff_next, "imx728_3840x2161.pad.raw");
+        //TODO: change embed-line info in buff_next
+
         read_exact(fd, buff_decode, decoded_size);
         nv12_to_bayer12(buff_decode, buff_main, VIDEO_SIZE_H_MAIN, VIDEO_SIZE_W, "GRBG");
 
