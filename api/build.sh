@@ -2,7 +2,6 @@
 SCRIPT_PATH=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 cd $SCRIPT_PATH
 
-g++ ue4_mock.cpp -L. -I/opt/boost/1.90.0/include -ldl  -pthread -lstdc++ -lrt -lhil_api -g  -O2 -o ue4_mock
-
+g++ decode_video_app.cpp -I/opt/boost/1.90.0/include -L. -ldl  -pthread -lstdc++ -lrt -lboost_system -lhil_api -g  -O2 -o decode_video_app
 
 
