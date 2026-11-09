@@ -28,16 +28,14 @@ apt install -y vlan can-utils sshpass wget git python3-pip python3-opencv vim nu
         linuxptp jq iftop ethtool build-essential ffmpeg mpv iputils-clockdiff python3-tk git libpopt-dev \
         libboost-all-dev nvtop cutecom chrony lm-sensors npm ca-certificates curl gnupg
 
-# https://carla.readthedocs.io/en/0.9.16/build_linux/
 apt install -y build-essential g++-12 cmake ninja-build libvulkan1 python3 python3-dev python3-pip python3-venv \
         autoconf wget curl rsync unzip git git-lfs libpng-dev libtiff5-dev libjpeg-dev aria2 bzip2
+
 
 # install python3 packages
 python3 -m pip install --upgrade pip
 python3 -m pip install bitstruct diskcache textparser GitPython cantools python-can
-# carla PythonAPI requirements.txt
 python3 -m pip install numpy matplotlib rich opencv-python loguru future networkx Shapely pygame matplotlib open3d Pillow
-
 
 
 # allow ipv4 forward
@@ -47,19 +45,7 @@ sysctl -p
 # vlan setting
 modprobe 8021q
 grep 8021q /etc/modules || echo "8021q" >> /etc/modules
-# install gcc-12 as default
-sudo apt install -y gcc-12 g++-12
-sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 12
-sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 12
-# install boost-1.90
-pushd $SCRIPT_PATH/data
-rm -rf boost_1_90_0*
-wget https://archives.boost.io/release/1.90.0/source/boost_1_90_0.tar.gz && tar -xzf boost_1_90_0.tar.gz
-pushd boost_1_90_0
-./bootstrap.sh --prefix=/opt/boost/1.90.0 && ./b2 -j$(nproc) && ./b2 install
-popd
-rm -rf boost_1_90_0*
-popd
+
 # cpu performance mode
 apt install -y linux-tools-common linux-tools-$(uname -r) linux-cloud-tools-$(uname -r)
 echo 'GOVERNOR="performance"' | sudo tee /etc/default/cpufrequtils
@@ -67,9 +53,54 @@ cpupower frequency-set --governor performance
 ### install libs and tools ### 
 
 
-
 ### install drivers ###
 REBOOT_NEEDED=0
+
+nvidia-smi --query-gpu=driver_version --format=csv,noheader --id=0 | grep 59
+if [ "$?" != "0" ]; then
+    echo "install nvidia driver 590"
+    sudo apt-get remove -y --purge '^nvidia-.*' '^libnvidia-.*' '^cuda-.*'
+    sudo apt install -y nvidia-driver-590
+    REBOOT_NEEDED=1
+fi
+
+
+modinfo f81601a | grep f81601a &>/dev/null
+if [ "$?" != "0" ]; then
+    echo "install f81601a driver..."
+    pushd cache
+    rm -rf f81601a_driver*
+    cp ../data/f81601a_driver.zip .
+    unzip f81601a_driver.zip
+    pushd f81601a_driver
+    make
+    make install
+    modprobe f81601a
+    grep f81601a /etc/modules || echo "f81601a" >> /etc/modules
+    popd
+    popd
+    REBOOT_NEEDED=1
+fi
+
+modinfo pcan | grep Release_20260126_n &>/dev/null
+if [ "$?" != "0" ]; then
+    echo "install pcan driver..."
+    pushd cache
+    rm -rf peak-linux-driver-9.0*
+    cp ../data/peak-linux-driver-9.0.tar.gz .
+    tar -xzvf peak-linux-driver-9.0.tar.gz
+    pushd peak-linux-driver-9.0
+    make netdev
+    make install
+    modprobe pcan
+    new_line="options pcan fdusemsi=1"
+    sed -i "/pcan fdusemsi/c$new_line" /etc/modprobe.d/pcan.conf
+    new_line="options pcan usemsi=1"
+    sed -i "/pcan usemsi/c$new_line" /etc/modprobe.d/pcan.conf
+    popd
+    popd
+    REBOOT_NEEDED=1
+fi
 
 old_xdma_ko=/lib/modules/$(uname -r)/kernel/drivers/dma/xilinx/xdma.ko
 if [ -f $old_xdma_ko ]; then

@@ -18,7 +18,6 @@ export BIND_CPU=1 # 0/1, use lscpu.txt to bind process to cpu
 ####### video service #######
 export REPLAY_AHEAD=15 # set HIL_TS early than VIDEO_0_1ST_TS in seconds
 export VIDEO_TS_SUBTRACT=0 # compensate video inject timecost in microseconds
-export VIDEO_BUF_SIZE=10 # decode video buffer size
 
 export VIDEO_PERIOD=33333 # only rough estimate
 export VIDEO_FSYNC_USE=0 # 0: inject video by video timestamp; 1: inject video by SoC fsync-trigger 
